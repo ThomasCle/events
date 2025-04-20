@@ -1,0 +1,1 @@
+public typealias EventHandler<T> = @Sendable (T) async -> Void
