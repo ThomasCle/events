@@ -9,10 +9,10 @@ struct EventSubscriber<T: Sendable> {
     /// A weak reference to the subscriber object to prevent retain cycles.
     /// When the original object is deallocated, this reference becomes `nil`.
     weak var subscriber: AnyObject?
-    
+
     /// The handler function that will be called when an event is fired.
     var handler: EventHandler<T>?
-    
+
     /// Creates a new event subscriber.
     ///
     /// - Parameters:

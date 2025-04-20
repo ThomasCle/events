@@ -1,79 +1,36 @@
-disabled_rules:
-  - trailing_whitespace
-  - line_length
-  - function_body_length
-
-opt_in_rules:
-  - empty_count
-  - explicit_init
-  - closure_spacing
-  - overridden_super_call
-  - redundant_nil_coalescing
-  - private_outlet
-  - attributes
-  - operator_usage_whitespace
-  - closure_end_indentation
-  - first_where
-  - sorted_imports
-  - prohibited_super_call
-  - fatal_error_message
-  - vertical_parameter_alignment_on_call
-  - unneeded_parentheses_in_closure_argument
-  - extension_access_modifier
-  - pattern_matching_keywords
-  - array_init
-  - literal_expression_end_indentation
-
-included:
-  - Sources
-  - Tests
+line_length: 150
 
 excluded:
-  - .build
-  - Carthage
-  - DerivedData
-  - Pods
+  - vendor
+  - BuildTools
 
-analyzer_rules:
-  - unused_declaration
-  - unused_import
-
-force_cast: warning
-force_try: warning
-function_parameter_count: 
-  warning: 8
-  error: 10
-
-type_name:
-  min_length: 3
-  max_length: 
-    warning: 50
-    error: 60
-  excluded:
-    - ID
-    - URL
-    - URI
+disabled_rules:
+  - trailing_whitespace
+  - todo # replaced by custom
+  - vertical_parameter_alignment # all kinds of problems with this rule with false positives - multiple github issues
+  - redundant_string_enum_value
+  - nesting
 
 identifier_name:
-  min_length: 
-    warning: 2
-    error: 1
-  max_length: 
-    warning: 40
-    error: 60
   excluded:
-    - id
-    - URL
-    - x
-    - y
     - i
-    - j
-    - pk
-    - to
-    - vm
-    - on
+  min_length: 2
+  max_length: 50
+type_name:
+  excluded:
+    - T
+  max_length: 60
+type_body_length: 400
+file_length: 500
+function_parameter_count: 8
 
-vertical_whitespace:
-  max_empty_lines: 2
-
-reporter: "xcode"
+opt_in_rules:
+  - implicit_return
+  - private_outlet
+  - private_action
+  - force_unwrapping
+implicit_return:
+  included:
+    - closure
+    - function
+    - getter

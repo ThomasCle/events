@@ -9,12 +9,12 @@
 /// ```swift
 /// // Create an event that passes String values
 /// let nameChangedEvent = Event<String>()
-/// 
+///
 /// // Subscribe to the event
 /// await nameChangedEvent.subscribe(for: self) { newName in
 ///     await updateUserInterface(with: newName)
 /// }
-/// 
+///
 /// // Fire the event
 /// await nameChangedEvent.fire(with: "John Doe")
 /// ```
@@ -58,7 +58,7 @@ public actor Event<T: Sendable> {
             await fireAndWait(with: value)
         }
     }
-    
+
     /// Fires an event and waits for all handlers to complete.
     ///
     /// This method waits until all subscriber handlers have processed the event before returning.
@@ -67,7 +67,7 @@ public actor Event<T: Sendable> {
     /// - Parameter value: The value to pass to each subscriber's handler.
     public func fireAndWait(with value: T) async {
         cleanup()
-        
+
         await withTaskGroup(of: Void.self) { group in
             for subscriber in subscribers {
                 if let handler = subscriber.handler {
@@ -106,7 +106,7 @@ public extension Event where T == Void {
     func fire() {
         fire(with: ())
     }
-    
+
     /// Fires a `Void` event and waits for all handlers to complete.
     ///
     /// This is a convenience method for firing events that don't need to pass any data,

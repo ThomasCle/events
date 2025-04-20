@@ -1,0 +1,14 @@
+# format options
+--commas inline
+--maxwidth 150
+
+--stripunusedargs closure-only
+
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+
+--trimwhitespace nonblank-lines
+
+# rules
+--disable andOperator, markTypes, organizeDeclarations, numberFormatting, preferKeyPath, todos, wrapMultilineStatementBraces, wrapSwitchCases, enumNamespaces, redundantRawValues

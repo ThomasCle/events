@@ -1,6 +1,6 @@
-import Testing
 @testable import Events
 import Foundation
+import Testing
 
 @Suite
 struct EventTests {
@@ -14,7 +14,7 @@ struct EventTests {
         }
         
         func get() -> T? {
-            return value
+            value
         }
     }
     
@@ -115,7 +115,7 @@ struct EventTests {
         }
         
         // Force any pending deallocations to complete
-        for _ in 1...5 {
+        for _ in 1 ... 5 {
             await Task.yield()
         }
         
@@ -251,13 +251,13 @@ struct EventTests {
         await event.subscribe(for: subscriber) { value in
             // Simulate async work in the handler
             Task {
-                try? await Task.sleep(nanoseconds: UInt64.random(in: 1_000_000...10_000_000))
+                try? await Task.sleep(nanoseconds: UInt64.random(in: 1_000_000 ... 10_000_000))
                 await counter.increment(by: value)
             }
         }
         
         // Fire multiple events in quick succession
-        for i in 1...5 {
+        for i in 1 ... 5 {
             await event.fireAndWait(with: i)
         }
         
@@ -283,7 +283,7 @@ struct EventTests {
             }
             
             func getCounts() -> [Int: Int] {
-                return counts
+                counts
             }
         }
         
@@ -291,7 +291,7 @@ struct EventTests {
         var subscribers = [Subscriber]()
         
         // Create multiple subscribers
-        for i in 0..<subscriberCount {
+        for i in 0 ..< subscriberCount {
             let subscriber = Subscriber()
             subscribers.append(subscriber)
             
@@ -307,7 +307,7 @@ struct EventTests {
         }
         
         // Fire events rapidly and wait for each to complete
-        for i in 1...eventCount {
+        for i in 1 ... eventCount {
             await event.fireAndWait(with: i)
         }
         
@@ -318,8 +318,8 @@ struct EventTests {
         let counts = await counter.getCounts()
         #expect(counts.count == subscriberCount)
         
-        let expectedSum = (1...eventCount).reduce(0, +)
-        for i in 0..<subscriberCount {
+        let expectedSum = (1 ... eventCount).reduce(0, +)
+        for i in 0 ..< subscriberCount {
             #expect(counts[i] == expectedSum, "Subscriber \(i) should have processed all events")
         }
     }
@@ -331,7 +331,7 @@ struct EventTests {
         
         // Create subscribers first and keep references to them
         var subscribers = [Subscriber]()
-        for _ in 0..<50 {
+        for _ in 0 ..< 50 {
             subscribers.append(Subscriber())
         }
         
@@ -343,7 +343,7 @@ struct EventTests {
         }
         
         // Now fire events
-        for i in 1...50 {
+        for i in 1 ... 50 {
             await event.fireAndWait(with: i)
         }
         
@@ -374,7 +374,7 @@ struct EventTests {
             await derivedValues.append(value)
         }
         
-        for i in 1...5 {
+        for i in 1 ... 5 {
             await sourceEvent.fireAndWait(with: i)
         }
         
