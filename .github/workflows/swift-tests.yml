@@ -7,30 +7,30 @@ on:
 
 jobs:
   swiftlint:
-    name: SwiftLint
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/realm/swiftlint:latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        
-      - name: Install SwiftLint
-        run: brew install swiftlint
-        
-      - name: Run SwiftLint
-        run: swiftlint --strict
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+
+    - name: SwiftLint
+      run: |
+        swiftlint --strict ./Sources ./Tests
 
   test:
     name: Run Tests
     runs-on: macos-latest
-    needs: swiftlint
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         
       - name: Set up Swift
-        uses: swift-actions/setup-swift@v1
+        uses: swift-actions/setup-swift@v2.3.0
         with:
-          swift-version: '6.1'
+          swift-version: "6.1"
           
       - name: Build and Test
         run: |
