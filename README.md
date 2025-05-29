@@ -1,7 +1,8 @@
 <img src="https://i.imgur.com/vTPmLia.jpeg" width=800 alt="Events - Concurrency-safe event broadcasting using Swift's modern actor model - Designed for simplicity. Built for Swift concurrency.">
 
 # Events
-[![Swift](https://img.shields.io/badge/Swift-6.1-orange.svg)](https://swift.org)
+[![Swift Versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FThomasCle%2Fevents%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/ThomasCle/events)
+[![Platform Versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FThomasCle%2Fevents%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/ThomasCle/events)
 
 An ultra lightweight, type-safe Swift package for implementing the observer pattern with modern Swift concurrency support. This package provides a clean, efficient way to handle events in your Swift applications with automatic memory management and unsubscribing through weak references.
 
