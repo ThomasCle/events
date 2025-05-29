@@ -25,6 +25,9 @@ public actor Event<T: Sendable> {
     /// Collection of subscribers to this event.
     private var subscribers: [EventSubscriber<T>] = []
 
+    /// Constructor for creating an event.
+    public init() { }
+
     /// Adds a subscription for the specified object with the given handler.
     ///
     /// This method automatically removes any existing subscription for the same object
