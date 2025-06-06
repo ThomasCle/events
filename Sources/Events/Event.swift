@@ -22,8 +22,18 @@
 /// - Generic Parameter T: The type of data that will be passed when an event is fired.
 ///                      Must conform to the `Sendable` protocol to ensure thread safety in concurrent contexts.
 public actor Event<T: Sendable> {
-    /// Collection of subscribers to this event.
-    private var subscribers: [EventSubscriber<T>] = []
+    /// Bundles all state related to a single subscriber (except mutable pending count).
+    private struct SubscriberState {
+        let subscriber: EventSubscriber<T>
+        let streamContinuation: AsyncStream<T>.Continuation
+        let processingTask: Task<Void, Never>
+    }
+    
+    /// Dictionary of subscriber states keyed by their ObjectIdentifier.
+    private var subscriberStates: [ObjectIdentifier: SubscriberState] = [:]
+    
+    /// Tracks the number of events currently being processed by each subscriber.
+    private var pendingEventCounts: [ObjectIdentifier: Int] = [:]
 
     /// Constructor for creating an event.
     public init() { }
@@ -38,8 +48,38 @@ public actor Event<T: Sendable> {
     ///   - handler: The function to call when the event is fired.
     /// - Note: The subscriber must be a class instance (AnyObject) so it can be weakly referenced.
     public func subscribe(for subscriber: some AnyObject, handler: @escaping EventHandler<T>) {
-        unsubscribe(for: subscriber) // Remove any existing subscription for the same object
-        subscribers.append(EventSubscriber(subscriber: subscriber, handler: handler))
+        let subscriberId = ObjectIdentifier(subscriber)
+        
+        // Clean up any dead subscribers first
+        unsubscribe(for: subscriber)
+        cleanup()
+        
+        // Create the EventSubscriber struct
+        let eventSubscriber = EventSubscriber(subscriber: subscriber, handler: handler)
+        
+        // Create an AsyncStream for this subscriber
+        let (stream, continuation) = AsyncStream.makeStream(of: T.self)
+        
+        // Start a task to process events from this subscriber's stream
+        let processingTask = Task { [weak self] in
+            for await value in stream {
+                // Process the event
+                await handler(value)
+                
+                // Decrement pending count after processing
+                await self?.decrementPendingCount(for: subscriberId)
+            }
+        }
+        
+        // Bundle all subscriber state together
+        let state = SubscriberState(
+            subscriber: eventSubscriber,
+            streamContinuation: continuation,
+            processingTask: processingTask
+        )
+        
+        subscriberStates[subscriberId] = state
+        pendingEventCounts[subscriberId] = 0
     }
 
     /// Removes the subscription for the specified object.
@@ -47,46 +87,111 @@ public actor Event<T: Sendable> {
     /// - Parameter subscriber: The object whose subscription should be removed.
     /// - Note: If the object has no subscription, this method has no effect.
     public func unsubscribe(for subscriber: some AnyObject) {
-        subscribers.removeAll { $0.subscriber === subscriber }
+        let subscriberId = ObjectIdentifier(subscriber)
+        guard let state = subscriberStates[subscriberId] else { return }
+        
+        state.processingTask.cancel()
+        state.streamContinuation.finish()
+        
+        subscriberStates.removeValue(forKey: subscriberId)
+        pendingEventCounts.removeValue(forKey: subscriberId)
     }
 
     /// Fires an event with the given value, but does not wait for handlers to complete.
     ///
-    /// This method launches a new task to process all subscriber handlers and returns immediately.
+    /// This method yields the event to all subscriber streams and returns immediately.
+    /// Each subscriber processes events in order through their individual AsyncStream.
     ///
     /// - Parameter value: The value to pass to each subscriber's handler.
     /// - Note: If you need to ensure all handlers have completed, use `fireAndWait(with:)` instead.
     public func fire(with value: T) {
-        Task {
-            await fireAndWait(with: value)
+        cleanup()
+        
+        // Yield the event to all active subscriber streams and track pending events
+        for (subscriberId, state) in subscriberStates {
+            pendingEventCounts[subscriberId, default: 0] += 1
+            state.streamContinuation.yield(value)
         }
     }
 
     /// Fires an event and waits for all handlers to complete.
     ///
-    /// This method waits until all subscriber handlers have processed the event before returning.
-    /// Handlers are executed concurrently using Swift's structured concurrency.
+    /// This method yields the event to all subscriber streams and waits until all
+    /// subscribers have processed the event before returning. Events are processed
+    /// in the same order as `fire(with:)` to maintain consistency.
     ///
     /// - Parameter value: The value to pass to each subscriber's handler.
     public func fireAndWait(with value: T) async {
         cleanup()
-
-        await withTaskGroup(of: Void.self) { group in
-            for subscriber in subscribers {
-                if let handler = subscriber.handler {
-                    group.addTask {
-                        await handler(value)
-                    }
-                }
-            }
+        
+        // Yield the event to all active subscriber streams and track pending events
+        for (subscriberId, state) in subscriberStates {
+            pendingEventCounts[subscriberId, default: 0] += 1
+            state.streamContinuation.yield(value)
         }
+        
+        // Wait for all events to complete processing
+        await waitForPendingEvents()
     }
 
     /// Removes subscribers whose referenced objects have been deallocated.
     ///
     /// This method is called automatically before firing events to clean up the subscriber list.
     private func cleanup() {
-        subscribers.removeAll { $0.subscriber == nil }
+        var keysToRemove: [ObjectIdentifier] = []
+        
+        for (key, state) in subscriberStates {
+            if state.subscriber.subscriber == nil {
+                keysToRemove.append(key)
+            }
+        }
+        
+        for key in keysToRemove {
+            guard let state = subscriberStates[key] else { continue }
+            
+            // Cancel the processing task
+            state.processingTask.cancel()
+            
+            // Finish the stream
+            state.streamContinuation.finish()
+            
+            // Remove the subscriber state
+            subscriberStates.removeValue(forKey: key)
+            
+            // Remove pending count tracking
+            pendingEventCounts.removeValue(forKey: key)
+        }
+    }
+    
+    /// Increments the pending event count for a subscriber.
+    private func incrementPendingCount(for subscriberId: ObjectIdentifier) {
+        pendingEventCounts[subscriberId, default: 0] += 1
+    }
+    
+    /// Decrements the pending event count for a subscriber.
+    private func decrementPendingCount(for subscriberId: ObjectIdentifier) {
+        if let count = pendingEventCounts[subscriberId], count > 0 {
+            pendingEventCounts[subscriberId] = count - 1
+        }
+    }
+    
+    /// Waits for all currently pending events to complete processing.
+    ///
+    /// This method will wait until all events that have been fired (but not yet processed)
+    /// have completed execution across all subscribers.
+    public func waitForPendingEvents() async {
+        while !pendingEventCounts.values.allSatisfy({ $0 == 0 }) {
+            try? await Task.sleep(nanoseconds: 1_000_000) // 1ms
+        }
+    }
+    
+    /// Checks if a subscriber is still active (not deallocated)
+    ///
+    /// - Parameter subscriberId: The ObjectIdentifier of the subscriber to check
+    /// - Returns: true if the subscriber is still alive, false otherwise
+    private func isSubscriberStillActive(_ subscriberId: ObjectIdentifier) -> Bool {
+        guard let state = subscriberStates[subscriberId] else { return false }
+        return state.subscriber.subscriber != nil
     }
 }
 
@@ -100,7 +205,7 @@ public extension Event where T == Void {
     ///   - subscriber: The object subscribing to the event. A weak reference is stored to prevent retain cycles.
     ///   - handler: The parameterless function to call when the event is fired.
     func subscribe(for subscriber: some AnyObject, handler: @Sendable @escaping () async -> Void) {
-        subscribe(for: subscriber, handler: { _ in await handler() })
+        subscribe(for: subscriber) { _ in await handler() }
     }
 
     /// Fires a `Void` event without any associated value.

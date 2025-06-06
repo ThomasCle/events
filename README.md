@@ -120,6 +120,20 @@ The Events package automatically manages memory for you:
 - Event system automatically cleans up references to deallocated subscribers
 - No need to manually unsubscribe when objects are deallocated
 
+## Performance 🏎️💨
+
+Before actor improvements:
+```
+🔥 Performance Baseline Results:
+   Events fired per subscriber: 10_000
+   Subscribers: 1000
+   Expected total handlers: 10_000_000
+   Completed handlers: 10_000_000
+   Total duration: 30.615 seconds
+   Events per subscriber per second: 327
+   Handler executions per second: 326638
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
